@@ -5,6 +5,11 @@ from utils.connector_client import connect_to_db, insert_to_db
 
 app = Flask(__name__)
 
+
+@app.route('/about', methods=['GET'])
+def about():
+    return {'app_version': "0.0.0"}, 200
+
 @app.route('/ingest', methods=['POST'])
 def ingest():
     data = request.get_json()

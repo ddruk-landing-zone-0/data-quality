@@ -57,34 +57,34 @@ services:
       - data-qual-private
 
 
-    data-ingestion:
-      build:
-        context: ./data-ingestion
-      container_name: data-ingestion-server
-      environment:
-        GENERIC_CONNECTOR_URL: http://connector-server:5000
+  data-ingestion:
+    build:
+      context: ./data-ingestion
+    container_name: data-ingestion-server
+    environment:
+      GENERIC_CONNECTOR_URL: http://connector-server:5000
 
-        POSTGRES_HOST: my-postgres-container-0
-        POSTGRES_PORT: 5432
-        POSTGRES_USER: admin
-        POSTGRES_PASSWORD: admin
-        POSTGRES_DATABASE: test
+      POSTGRES_HOST: my-postgres-container-0
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DATABASE: test
 
-        MYSQL_HOST: my-mysql-container-0
-        MYSQL_PORT: 3306
-        MYSQL_USER: admin
-        MYSQL_PASSWORD: admin
-        MYSQL_DATABASE: test
+      MYSQL_HOST: my-mysql-container-0
+      MYSQL_PORT: 3306
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+      MYSQL_DATABASE: test
 
-        MONGO_HOST: my-mongo-container-0
-        MONGO_PORT: 27017
-        MONGO_USER: admin
-        MONGO_PASSWORD: admin
-        MONGO_DATABASE: test
-      ports:
-        - "5050:5050"
-      networks:
-        - data-qual-private
+      MONGO_HOST: my-mongo-container-0
+      MONGO_PORT: 27017
+      MONGO_USER: admin
+      MONGO_PASSWORD: admin
+      MONGO_DATABASE: test
+    ports:
+      - "5050:5050"
+    networks:
+      - data-qual-private
 
 
 

@@ -8,27 +8,28 @@ def connect_to_db(db_type):
         "postgres": {
             "host": os.getenv("POSTGRES_HOST", "my-postgres-container-0"),
             "port": os.getenv("POSTGRES_PORT", "5432"),
-            "user": os.getenv("POSTGRES_USER", "admin"),
+            "username": os.getenv("POSTGRES_USER", "admin"),
             "password": os.getenv("POSTGRES_PASSWORD", "admin"),
             "database": os.getenv("POSTGRES_DATABASE", "test"),
         },
         "mysql": {
             "host": os.getenv("MYSQL_HOST", "my-mysql-container-0"),
             "port": os.getenv("MYSQL_PORT", "3306"),
-            "user": os.getenv("MYSQL_USER", "admin"),
+            "username": os.getenv("MYSQL_USER", "admin"),
             "password": os.getenv("MYSQL_PASSWORD", "admin"),
             "database": os.getenv("MYSQL_DATABASE", "test"),
         },
         "mongo": {
             "host": os.getenv("MONGO_HOST", "my-mongo-container-0"),
             "port": os.getenv("MONGO_PORT", "27017"),
-            "user": os.getenv("MONGO_USER", "admin"),
+            "username": os.getenv("MONGO_USER", "admin"),
             "password": os.getenv("MONGO_PASSWORD", "admin"),
             "database": os.getenv("MONGO_DATABASE", "test"),
         }
     }
 
-    payload = {"type": db_type, "creds": creds[db_type]}
+    payload = {"type": db_type, ** creds[db_type]}
+    print(f"Connecting to {db_type} with payload: {payload}. URL: {GENERIC_CONNECTOR_URL}/connect")
     return requests.post(f"{GENERIC_CONNECTOR_URL}/connect", json=payload).json()
 
 def insert_to_db(db_type, samples):
