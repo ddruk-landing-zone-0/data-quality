@@ -1,0 +1,23 @@
+ARG BASE_IMAGE=ubuntu:22.04
+FROM $BASE_IMAGE
+
+USER 0
+
+
+ENV CFLAGS="-std=c99"
+ENV DEBIAN_FRONTEND=noninteractive
+
+
+RUN apt-get update
+ 
+RUN apt-get install -y postgresql postgresql-client postgresql-contrib sudo && \
+    apt-get clean
+
+COPY start-psql.sh ./start-psql.sh
+RUN chmod +x ./start-psql.sh
+
+USER 1001
+EXPOSE 5432
+
+#ENTRYPOINT ["sh"]
+ENTRYPOINT ["./start-psql.sh"]

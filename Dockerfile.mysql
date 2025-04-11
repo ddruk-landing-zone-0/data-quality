@@ -1,0 +1,25 @@
+ARG BASE_IMAGE=ubuntu:22.04
+FROM $BASE_IMAGE
+
+USER 0
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y wget lsb-release gnupg sudo net-tools && \
+    wget https://dev.mysql.com/get/mysql-apt-config_0.8.29-1_all.deb && \
+    echo "mysql-apt-config mysql-apt-config/select-server select mysql-8.0" | debconf-set-selections && \
+    dpkg -i mysql-apt-config_0.8.29-1_all.deb && \
+    apt-get update && \
+    apt-get install -y mysql-server && \
+    apt-get clean && \
+    rm -f mysql-apt-config_0.8.29-1_all.deb
+
+
+COPY start-mysql.sh ./start-mysql.sh
+RUN chmod +x ./start-mysql.sh
+
+USER 1001
+EXPOSE 3306
+
+ENTRYPOINT ["./start-mysql.sh"]
