@@ -20,3 +20,4 @@ class PostgresConnector(BaseConnector):
             if cur.description:
                 return cur.fetchall()
             return []
+

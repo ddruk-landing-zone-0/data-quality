@@ -1,5 +1,6 @@
 from faker import Faker
 import random
+import uuid
 
 fake = Faker()
 
@@ -7,7 +8,7 @@ def generate_sample(schema):
     sample = {}
     for field in schema:
         if field in ["id", "_id"]:
-            sample[field] = fake.uuid4()
+            sample[field] = str(uuid.uuid4())
         elif field == "name":
             sample[field] = fake.name()
         elif field == "email":

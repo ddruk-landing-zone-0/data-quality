@@ -14,7 +14,8 @@ services:
       - "5433:5432"
     networks:
       - data-qual-private
-
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   mongo:
     build:
@@ -31,6 +32,8 @@ services:
       - "27018:27017"
     networks:
       - data-qual-private
+    volumes:
+      - mongo_data:/data/db
 
   mysql:
     build:
@@ -46,6 +49,8 @@ services:
       - "3307:3306"
     networks:
       - data-qual-private
+    volumes:
+      - mysql_data:/var/lib/mysql
 
   connector-server:
     build:
@@ -55,7 +60,6 @@ services:
       - "5001:5000"
     networks:
       - data-qual-private
-
 
   data-ingestion:
     build:
@@ -86,8 +90,11 @@ services:
     networks:
       - data-qual-private
 
-
-
 networks:
   data-qual-private:
     driver: bridge
+
+volumes:
+  postgres_data:
+  mysql_data:
+  mongo_data:
