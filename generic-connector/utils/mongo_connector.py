@@ -25,7 +25,11 @@ class MongoConnector(BaseConnector):
 
             if operation == "find":
                 filter_criteria = query.get("filter", {})
-                return list(self.db[collection_name].find(filter_criteria))
+                ans = list(self.db[collection_name].find(filter_criteria))
+                # Convert ObjectId to string for JSON serialization
+                for doc in ans:
+                    doc["_id"] = str(doc["_id"])
+                return ans
             elif operation == "insert":
                 documents = query.get("documents", [])
                 result = self.db[collection_name].insert_many(documents)

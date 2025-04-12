@@ -15,9 +15,22 @@ class PostgresConnector(BaseConnector):
         )
 
     def execute_and_return_result(self, query):
-        with self.conn.cursor() as cur:
-            cur.execute(query)
-            if cur.description:
-                return cur.fetchall()
-            return []
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(query)
+                if cur.description:
+                    result = cur.fetchall()
+                else:
+                    result = []
+                self.conn.commit()  # commit if needed
+                return result
+        except Exception as e:
+            print(f"Error executing query: {query}. Error: {e}")
+            try:
+                self.conn.rollback()
+            except Exception as rollback_error:
+                print(f"Error during rollback: {rollback_error}")
+                raise rollback_error
+            raise e
+
 

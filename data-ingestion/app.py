@@ -28,7 +28,7 @@ def ingest():
 
         # Generate & insert data
         schema = SCHEMAS[db_type]
-        samples = generate_samples(schema.get("fields", list(schema["columns"].keys())), n=10)
+        samples = generate_samples(schema.get("fields", list(schema.get("columns",{}).keys())), n=10)
         insert_response = insert_to_db(db_type, samples)
 
         return jsonify({
