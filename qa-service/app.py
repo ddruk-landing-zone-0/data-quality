@@ -58,6 +58,8 @@ def perform_check():
         # Store the log check result
         print(f"[5/6] Storing log check result in QA database")
         store_response = store_log_check_result(
+            target_db_type = db_type,
+            target_database = database,
             db_type = "postgres",
             database = qa_db_creds["database"],
             table = qa_db_creds["table"],

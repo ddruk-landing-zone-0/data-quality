@@ -33,14 +33,14 @@ def create_qa_table_if_not_exists(db_type , database , table):
 
 
 
-def store_log_check_result(db_type,database,table,results):
+def store_log_check_result(target_db_type, target_database, db_type,database,table,results):
     entries = []
 
     for result in results:
         entry = {
             "test_time": datetime.now().isoformat(),
-            "type": db_type,
-            "db": database,
+            "type": target_db_type,
+            "db": target_database,
             "rule_id": result["rule_id"],
             "total_rows": result["total_rows"],
             "total_rows_pass": result["total_rows_pass"],
