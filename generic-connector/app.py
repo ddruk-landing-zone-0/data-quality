@@ -19,6 +19,7 @@ def connect():
         username = data['username']
         password = data['password']
         database = data['database']
+        connection_key = f"{db_type}_{database}"
         host = data.get('host', 'localhost')
         port = int(data.get('port'))
 
@@ -32,7 +33,7 @@ def connect():
             return jsonify({"error": "Unsupported database type"}), 400
 
         connector.connect(username, password, database, host, port)
-        connectors[db_type] = connector
+        connectors[connection_key] = connector
         return jsonify({"message": f"{db_type} connected successfully."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -42,14 +43,16 @@ def execute():
     try:
         data = request.get_json()
         db_type = data['type'].lower()
+        database = data['database']
         query = data['query']
+        connection_key = f"{db_type}_{database}"
 
-        connector = connectors.get(db_type)
+        connector = connectors.get(connection_key)
 
-        print(f"Executing query on {db_type}: {query}")
+        print(f"Executing query on {connection_key}: {query}")
         
         if not connector:
-            return jsonify({"error": f"No active connection for {db_type}"}), 400
+            return jsonify({"error": f"No active connection for {connection_key}"}), 400
 
         result = connector.execute_and_return_result(query)
         return jsonify({"result": result})

@@ -4,10 +4,13 @@ set -e
 
 VERSION='14'
 CLUSTER_NAME='main'
+POSTGRESPORT=${POSTGRESPORT:-5432}
 
 # Step 1: Update configs before starting
 echo "listen_addresses = '*'" >> /etc/postgresql/$VERSION/$CLUSTER_NAME/postgresql.conf
+echo "port = $POSTGRESPORT" >> /etc/postgresql/$VERSION/$CLUSTER_NAME/postgresql.conf
 echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/$VERSION/$CLUSTER_NAME/pg_hba.conf
+
 
 # Step 2: Start cluster
 pg_ctlcluster $VERSION $CLUSTER_NAME start
