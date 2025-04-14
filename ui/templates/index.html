@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Database Action UI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Database Action UI</h1>
+
+    <div class="form-group">
+      <label for="dbType">Database Type</label>
+      <select id="dbType">
+        <option value="postgres">Postgres</option>
+        <option value="mysql">MySQL</option>
+        <option value="mongo">MongoDB</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="database">Database</label>
+      <select id="database">
+        <option value="test">test</option>
+      </select>
+    </div>
+
+    <div class="buttons">
+      <button onclick="triggerAction('ingest')">Ingest</button>
+      <button onclick="triggerAction('perform-check')">Perform Check</button>
+    </div>
+
+    <div class="history">
+      <h2>History</h2>
+      <div id="historyList"></div>
+    </div>
+
+    <div class="response-tab" id="responseTab"></div>
+  </div>
+
+  <script>
+    const historyList = document.getElementById('historyList');
+    const responseTab = document.getElementById('responseTab');
+
+    function triggerAction(actionType) {
+      const dbType = document.getElementById('dbType').value;
+      const database = document.getElementById('database').value;
+      const endpoint = actionType === 'ingest'
+        ? 'http://127.0.0.1:5050/ingest'
+        : 'http://127.0.0.1:9090/perform-check';
+
+      const payload = {
+        type: dbType,
+        database: database
+      };
+
+      const timestamp = new Date().toLocaleString();
+      
+      console.log(`Triggering ${actionType} for ${dbType} on ${database} at ${timestamp}`);
+      console.log('Payload:', payload);
+      console.log('Endpoint:', endpoint);
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+        .then(async res => {
+          const data = await res.json();
+          addHistoryItem(actionType, res.status, timestamp, data);
+        })
+        .catch(err => {
+          addHistoryItem(actionType, 500, timestamp, { error: err.message });
+        });
+    }
+
+    function addHistoryItem(type, status, timestamp, response) {
+      const item = document.createElement('div');
+      item.className = 'history-item ' + (status === 200 ? 'status-200' : 'status-error');
+      item.innerText = `[${timestamp}] ${type.toUpperCase()} - Status: ${status}`;
+      item.onclick = () => {
+        responseTab.style.display = 'block';
+        responseTab.innerText = JSON.stringify(response, null, 2);
+      };
+      historyList.prepend(item);
+    }
+  </script>
+</body>
+</html>

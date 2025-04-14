@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Constraint Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles-constraint.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Constraint Management</h2>
+        <div id="constraint-tree"></div>
+        <button onclick="submitConstraints()">Save Changes</button>
+    </div>
+
+    <script>
+        let constraintData = {};
+
+        document.addEventListener("DOMContentLoaded", () => {
+            fetch('http://127.0.0.1:9090/constraints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ operation: 'view' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                constraintData = data;
+                renderConstraints(data);
+            });
+        });
+
+        function renderConstraints(data) {
+            const container = document.getElementById('constraint-tree');
+            container.innerHTML = '';
+
+            for (let db in data) {
+                const btn = createCollapsible(db);
+                const content = document.createElement('div');
+                content.className = 'content';
+
+                for (let setName in data[db]) {
+                    const setBtn = createCollapsible(setName);
+                    const setContent = document.createElement('div');
+                    setContent.className = 'content';
+
+                    const rules = data[db][setName];
+                    let ruleCount = Object.keys(rules).filter(k => k.startsWith('rule')).length;
+
+                    for (let key in rules) {
+                        const block = createRuleBlock(db, setName, key, rules[key]);
+                        setContent.appendChild(block);
+                    }
+
+                    const addBtn = document.createElement('button');
+                    addBtn.innerText = 'Add Rule';
+                    addBtn.onclick = () => {
+                        const newKey = `rule${ruleCount++}`;
+                        const defaultValue = db === 'mongo' 
+                            ? JSON.stringify({ operation: "count", collection: "", filter: {} }, null, 2)
+                            : "SELECT COUNT(*) FROM <table> WHERE <condition>;";
+                        const block = createRuleBlock(db, setName, newKey, defaultValue);
+                        setContent.appendChild(block);
+                        constraintData[db][setName][newKey] = defaultValue;
+                    };
+
+                    setContent.appendChild(addBtn);
+                    content.appendChild(setBtn);
+                    content.appendChild(setContent);
+                }
+
+                container.appendChild(btn);
+                container.appendChild(content);
+            }
+
+            makeCollapsible();
+        }
+
+        function createCollapsible(label) {
+            const btn = document.createElement('button');
+            btn.className = 'collapsible';
+            btn.textContent = label;
+            return btn;
+        }
+
+        function createRuleBlock(db, set, key, value) {
+            const div = document.createElement('div');
+            div.className = 'rule-block';
+
+            const label = document.createElement('strong');
+            label.innerText = key;
+
+            const textarea = document.createElement('textarea');
+            textarea.rows = 4;
+            textarea.value = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+
+            // Disable editing if it's count_rule
+            if (key === 'count_rule') {
+                textarea.disabled = true;
+                textarea.style.backgroundColor = '#e9ecef';
+            } else {
+                textarea.onchange = () => {
+                    try {
+                        constraintData[db][set][key] = db === 'mongo' ? JSON.parse(textarea.value) : textarea.value;
+                    } catch (e) {
+                        alert("Invalid JSON format");
+                    }
+                };
+            }
+
+            div.appendChild(label);
+            div.appendChild(document.createElement('br'));
+            div.appendChild(textarea);
+            div.appendChild(document.createElement('br'));
+
+            // Only show delete button if it's not count_rule
+            if (key !== 'count_rule') {
+                const delBtn = document.createElement('button');
+                delBtn.innerText = 'Delete';
+                delBtn.onclick = () => {
+                    delete constraintData[db][set][key];
+                    div.remove();
+                };
+                div.appendChild(delBtn);
+            }
+
+            return div;
+        }
+
+
+        function makeCollapsible() {
+            const collapsibles = document.getElementsByClassName("collapsible");
+            for (let i = 0; i < collapsibles.length; i++) {
+                collapsibles[i].onclick = function () {
+                    this.classList.toggle("active");
+                    const content = this.nextElementSibling;
+                    content.style.display = content.style.display === "block" ? "none" : "block";
+                };
+            }
+        }
+
+        function submitConstraints() {
+            fetch('http://127.0.0.1:9090/constraints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ operation: 'update', new_constraints: constraintData })
+            })
+            .then(res => res.json())
+            .then(resp => {
+                alert(resp.message || "Update Successful");
+            });
+        }
+    </script>
+</body>
+</html>
