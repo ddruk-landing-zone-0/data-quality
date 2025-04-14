@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from schemas import SCHEMAS
 from utils.sample_generator import generate_samples
 from utils.connector_client import connect_to_db, insert_to_db, create_table_if_not_exists
 
 
 app = Flask(__name__)
+CORS(app)
  
 
 @app.route('/about', methods=['GET'])

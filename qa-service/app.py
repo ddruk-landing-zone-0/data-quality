@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import os
 from constraints import CONSTRAINTS
 from utils.connector_client import connect_to_db, perform_checks
 from utils.db_logger import connect_to_qa_db, create_qa_table_if_not_exists, store_log_check_result
 
 app = Flask(__name__)
+CORS(app)
 
 qa_db_creds = {
     "host": os.getenv("QA_POSTGRES_HOST", "my-qa-postgres-container-0"),
@@ -18,6 +20,31 @@ qa_db_creds = {
 @app.route("/about")
 def about():
     return {'app_version': "0.0.0"}, 200
+
+@app.route('/constraints', methods=['POST'])
+def manage_constraints():
+    data = request.get_json()
+
+    if not data or 'operation' not in data:
+        return jsonify({"error": "Missing 'operation' in request body."}), 400
+
+    operation = data['operation'].lower()
+
+    if operation == 'view':
+        return jsonify(CONSTRAINTS)
+
+    elif operation == 'update':
+        new_constraints = data.get('new_constraints')
+        if not isinstance(new_constraints, dict):
+            return jsonify({"error": "'new_constraints' must be a dictionary."}), 400
+
+        CONSTRAINTS.clear()
+        CONSTRAINTS.update(new_constraints)
+        return jsonify({"message": "Constraints updated successfully.", "updated_constraints": CONSTRAINTS})
+
+    else:
+        return jsonify({"error": f"Unsupported operation '{operation}'."}), 400
+
 
 @app.route("/perform-check", methods=["POST"])
 def perform_check():

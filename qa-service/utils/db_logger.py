@@ -2,7 +2,6 @@ import requests
 import os
 from datetime import datetime
 import json
-from constraints import CONSTRAINTS
 from qa_schema import QA_SCHEMA
 
 GENERIC_CONNECTOR_URL = os.getenv("GENERIC_CONNECTOR_URL", "http://connector-server:5000")

@@ -1,6 +1,5 @@
 import requests
 import os
-from constraints import CONSTRAINTS
 from typing import List, Any
 
 GENERIC_CONNECTOR_URL = os.getenv("GENERIC_CONNECTOR_URL", "http://connector-server:5000")
@@ -38,6 +37,8 @@ def connect_to_db(db_type,database):
 
 
 def perform_checks(db_type, database):
+    from constraints import CONSTRAINTS
+    
     if db_type not in CONSTRAINTS:
         raise ValueError(f"Unsupported db type: {db_type}")
     if database not in CONSTRAINTS[db_type]:
