@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 from constraints import CONSTRAINTS
 from utils.connector_client import connect_to_db, perform_checks
-from utils.db_logger import connect_to_qa_db, create_qa_table_if_not_exists, store_log_check_result
+from utils.db_logger import connect_to_qa_db, create_qa_table_if_not_exists, store_log_check_result, execute_qa_log_check
 
 app = Flask(__name__)
 CORS(app)
@@ -110,6 +110,33 @@ def perform_check():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+@app.route("/qa-results", methods=["POST"])
+def get_qa_results():
+    try:
+        data = request.get_json()
+        # Connect to the QA database
+        print(f"[1/2] Connecting to QA database")
+        qa_db_response = connect_to_qa_db(qa_db_creds)
+
+        # Fetch the results from the QA database
+        print(f"[2/2] Fetching results from QA database")
+        db_type = data.get("type", "").lower()
+        database = data.get("database", "")
+        query = data.get("query", "")
+
+        qa_result = execute_qa_log_check(
+            db_type = db_type,
+            database = database,
+            query = query,
+        )
+        
+        # Check if the query execution was successful
+        if qa_result.get("error"):
+            return jsonify({"error": "Failed to fetch results from QA DB"}), 500
+        return jsonify(qa_result)
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9090)

@@ -1,0 +1,85 @@
+/* Dark Theme */
+body.dark-theme {
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+
+.dark-theme .dashboard {
+    background-color: #0f172a;
+}
+
+.dark-theme header {
+    border-bottom-color: #334155;
+}
+
+.dark-theme section {
+    background-color: #1e293b;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.dark-theme select,
+.dark-theme button {
+    background-color: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+.dark-theme button {
+    background-color: #2563eb;
+    color: white;
+}
+
+.dark-theme button:hover {
+    background-color: #3b82f6;
+}
+
+.dark-theme .toggle-switch {
+    background-color: #475569;
+}
+
+.dark-theme .toggle-slider:before {
+    background-color: #94a3b8;
+}
+
+.dark-theme input:checked + .toggle-slider {
+    background-color: #3b82f6;
+}
+
+.dark-theme table th,
+.dark-theme table td {
+    border-bottom-color: #334155;
+}
+
+.dark-theme table th {
+    background-color: #1e293b;
+}
+
+.dark-theme .summary-card {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+}
+
+/* Status colors - Dark Theme */
+.dark-theme tr.pass {
+    background-color: rgba(52, 211, 153, 0.15);
+}
+
+.dark-theme tr.warning {
+    background-color: rgba(251, 191, 36, 0.15);
+}
+
+.dark-theme tr.fail {
+    background-color: rgba(239, 68, 68, 0.15);
+}
+
+.dark-theme tr.pass td {
+    color: #34d399;
+}
+
+.dark-theme tr.warning td {
+    color: #fbbf24;
+}
+
+.dark-theme tr.fail td {
+    color: #f87171;
+}

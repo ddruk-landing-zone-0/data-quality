@@ -65,3 +65,15 @@ def store_log_check_result(target_db_type, target_database, db_type,database,tab
     if response.status_code != 200:
         raise ValueError(f"Failed to store log check result: {response.text}")
     return response.json()
+
+def execute_qa_log_check(db_type, database, query):
+    payload = {
+        "type": db_type,
+        "database": database,
+        "query": query
+    }
+    print(f"Executing log check with payload: {payload}. URL: {GENERIC_CONNECTOR_URL}/execute")
+    response = requests.post(f"{GENERIC_CONNECTOR_URL}/execute", json=payload)
+    if response.status_code != 200:
+        raise ValueError(f"Failed to execute log check: {response.text}")
+    return response.json()

@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QA Dashboard</title>
-    <link rel="stylesheet" href="styles-dashboard.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles-dashboard.css') }}">
+    <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/theme-light-dashboard.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
 </head>
-<body>
+<body class="light-theme">
     <div class="dashboard">
         <header>
             <div class="logo">
@@ -40,6 +41,13 @@
                         <option value="week">Last Week</option>
                         <option value="month" selected>Last Month</option>
                     </select>
+                </div>
+                <div class="theme-toggle">
+                    <label for="theme-switch">Theme:</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="theme-switch" onchange="toggleTheme()">
+                        <span class="toggle-slider"></span>
+                    </div>
                 </div>
                 <button id="refresh-btn" onclick="fetchData()">Refresh Data</button>
             </div>
@@ -87,7 +95,21 @@
         </section>
 
         <section class="time-series-section">
-            <h2>Quality Metrics Over Time</h2>
+            <div class="section-header">
+                <h2>Quality Metrics Over Time</h2>
+                <div class="time-delta-selector">
+                    <label for="time-delta">Time Interval:</label>
+                    <select id="time-delta" onchange="updateTimeSeriesInterval()">
+                        <option value="minute">1 Minute</option>
+                        <option value="hour">1 Hour</option>
+                        <option value="halfday">12 Hours</option>
+                        <option value="day" selected>1 Day</option>
+                        <option value="week">1 Week</option>
+                        <option value="month">1 Month</option>
+                        <option value="year">1 Year</option>
+                    </select>
+                </div>
+            </div>
             <div class="chart-container">
                 <canvas id="time-series-chart"></canvas>
             </div>
@@ -110,7 +132,7 @@
         </div>
 
         <section class="detailed-scores-section">
-            <h2>Detailed Rule Scores</h2>
+            <h2>Detailed Rule Scores (Recent 100 Logs)</h2>
             <div class="table-container">
                 <table id="detailed-scores">
                     <thead>
@@ -133,529 +155,6 @@
         </section>
     </div>
 
-    <script>
-        // Global variables
-        let qaData = [];
-        let timeSeriesChart, ruleBreakdownChart, connectionComparisonChart;
-        let gaugeCharts = {};
-        const ruleTypes = ["accuracy", "completeness", "consistency", "validity", "timeliness"];
-        const colors = {
-            accuracy: 'rgba(66, 133, 244, 1)',
-            completeness: 'rgba(52, 168, 83, 1)',
-            consistency: 'rgba(251, 188, 5, 1)',
-            validity: 'rgba(234, 67, 53, 1)',
-            timeliness: 'rgba(138, 78, 159, 1)'
-        };
-
-        // Initialize the dashboard
-        document.addEventListener('DOMContentLoaded', function() {
-            initCharts();
-            fetchData();
-        });
-
-        // Fetch data from API endpoint
-        async function fetchData() {
-            try {
-                const response = await fetch('http://127.0.0.1:5001/execute', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        "type": "postgres",
-                        "database": "qa_db",
-                        "query": "SELECT * FROM qa_logs;"
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                // Transform the data from array of arrays to array of objects
-                qaData = data.result.map(row => ({
-                    id: row[0],
-                    test_time: row[1],
-                    type: row[2],
-                    db: row[3],
-                    rule_type: row[4],
-                    rule_id: row[5],
-                    total_rows: row[6],
-                    total_rows_pass: row[7],
-                    pass_percentage: row[8]
-                }));
-
-                // Update last refresh time
-                document.getElementById('last-update-time').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
-                
-                // Process and display the data
-                filterData();
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                alert('Failed to fetch data. Please check the console for details.');
-                
-                // Use sample data if API fails (for development purposes)
-                useSampleData();
-            }
-        }
-
-        // Function to use sample data if API fails
-        function useSampleData() {
-            // Sample data generation
-            qaData = generateSampleData();
-            filterData();
-        }
-
-        // Filter data based on user selections
-        function filterData() {
-            const typeFilter = document.getElementById('type-filter').value;
-            const dbFilter = document.getElementById('db-filter').value;
-            const dateRange = document.getElementById('date-range').value;
-            
-            // Apply filters
-            let filteredData = qaData.filter(item => {
-                // Type filter
-                if (typeFilter !== 'all' && item.type !== typeFilter) return false;
-                
-                // Database filter
-                if (dbFilter !== 'all' && item.db !== dbFilter) return false;
-                
-                // Date filter
-                const itemDate = new Date(item.test_time);
-                const now = new Date();
-                
-                if (dateRange === 'day') {
-                    return itemDate >= new Date(now.setDate(now.getDate() - 1));
-                } else if (dateRange === 'week') {
-                    return itemDate >= new Date(now.setDate(now.getDate() - 7));
-                } else if (dateRange === 'month') {
-                    return itemDate >= new Date(now.setMonth(now.getMonth() - 1));
-                }
-                
-                return true;
-            });
-            
-            // Update all visualizations
-            updateSummaryCards(filteredData);
-            updateTimeSeriesChart(filteredData);
-            updateRuleBreakdownChart(filteredData);
-            updateConnectionComparisonChart(filteredData);
-            updateDetailedTable(filteredData);
-        }
-
-        // Initialize charts
-        function initCharts() {
-            // Initialize gauge charts
-            ruleTypes.forEach(type => {
-                const ctx = document.getElementById(`gauge-${type}`).getContext('2d');
-                gaugeCharts[type] = new Chart(ctx, createGaugeConfig(0, colors[type]));
-            });
-            
-            // Initialize time series chart
-            const timeSeriesCtx = document.getElementById('time-series-chart').getContext('2d');
-            timeSeriesChart = new Chart(timeSeriesCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: ruleTypes.map((type, index) => ({
-                        label: type.charAt(0).toUpperCase() + type.slice(1),
-                        data: [],
-                        borderColor: colors[type],
-                        backgroundColor: colors[type].replace('1)', '0.1)'),
-                        tension: 0.4,
-                        pointRadius: 3
-                    }))
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Date'
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            title: {
-                                display: true,
-                                text: 'Pass Percentage (%)'
-                            }
-                        }
-                    }
-                }
-            });
-            
-            // Initialize rule breakdown chart
-            const ruleBreakdownCtx = document.getElementById('rule-breakdown-chart').getContext('2d');
-            ruleBreakdownChart = new Chart(ruleBreakdownCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Pass Percentage',
-                        data: [],
-                        backgroundColor: Object.values(colors),
-                        borderColor: Object.values(colors),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            max: 100
-                        }
-                    }
-                }
-            });
-            
-            // Initialize connection comparison chart
-            const connectionComparisonCtx = document.getElementById('connection-comparison-chart').getContext('2d');
-            connectionComparisonChart = new Chart(connectionComparisonCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: ruleTypes.map((type, index) => ({
-                        label: type.charAt(0).toUpperCase() + type.slice(1),
-                        data: [],
-                        backgroundColor: colors[type],
-                        borderColor: colors[type],
-                        borderWidth: 1
-                    }))
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            title: {
-                                display: true,
-                                text: 'Pass Percentage (%)'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Create gauge chart configuration
-        function createGaugeConfig(value, color) {
-            return {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [value, 100 - value],
-                        backgroundColor: [
-                            color,
-                            'rgba(200, 200, 200, 0.2)'
-                        ],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    circumference: 180,
-                    rotation: -90,
-                    cutout: '75%',
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            enabled: false
-                        }
-                    },
-                    maintainAspectRatio: false,
-                    responsive: true
-                }
-            };
-        }
-
-        // Update summary cards with gauge charts
-        function updateSummaryCards(data) {
-            // Calculate average score by rule type
-            const averages = {};
-            
-            ruleTypes.forEach(type => {
-                const rules = data.filter(item => item.rule_type === type);
-                if (rules.length > 0) {
-                    const sum = rules.reduce((acc, item) => acc + item.pass_percentage, 0);
-                    averages[type] = sum / rules.length;
-                } else {
-                    averages[type] = 0;
-                }
-            });
-            
-            // Update each gauge chart and value
-            ruleTypes.forEach(type => {
-                const value = averages[type] || 0;
-                const formattedValue = value.toFixed(1) + '%';
-                
-                // Update gauge chart
-                gaugeCharts[type].data.datasets[0].data = [value, 100 - value];
-                gaugeCharts[type].update();
-                
-                // Update text value
-                document.getElementById(`${type}-value`).textContent = formattedValue;
-            });
-        }
-
-        // Update time series chart
-        function updateTimeSeriesChart(data) {
-            // Get unique dates from data
-            const dates = [...new Set(data.map(item => {
-                const date = new Date(item.test_time);
-                return date.toLocaleDateString();
-            }))].sort((a, b) => new Date(a) - new Date(b));
-            
-            // Prepare datasets for each rule type
-            const datasets = {};
-            ruleTypes.forEach(type => {
-                datasets[type] = {};
-                dates.forEach(date => {
-                    datasets[type][date] = [];
-                });
-            });
-            
-            // Group data by date and rule type
-            data.forEach(item => {
-                const date = new Date(item.test_time).toLocaleDateString();
-                if (dates.includes(date) && ruleTypes.includes(item.rule_type)) {
-                    datasets[item.rule_type][date].push(item.pass_percentage);
-                }
-            });
-            
-            // Calculate average for each date and rule type
-            const averages = {};
-            ruleTypes.forEach(type => {
-                averages[type] = [];
-                dates.forEach(date => {
-                    const values = datasets[type][date];
-                    if (values.length > 0) {
-                        const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
-                        averages[type].push(avg);
-                    } else {
-                        averages[type].push(null); // No data for this date/type
-                    }
-                });
-            });
-            
-            // Update chart
-            timeSeriesChart.data.labels = dates;
-            ruleTypes.forEach((type, index) => {
-                timeSeriesChart.data.datasets[index].data = averages[type];
-            });
-            
-            timeSeriesChart.update();
-        }
-
-        // Update rule breakdown chart
-        function updateRuleBreakdownChart(data) {
-            // Get unique rule IDs
-            const ruleIds = [...new Set(data.map(item => item.rule_id))];
-            
-            // Calculate average for each rule ID
-            const ruleAverages = ruleIds.map(ruleId => {
-                const ruleData = data.filter(item => item.rule_id === ruleId);
-                const sum = ruleData.reduce((acc, item) => acc + item.pass_percentage, 0);
-                const avg = sum / ruleData.length;
-                
-                // Get the rule type for color coding
-                const ruleType = ruleData[0]?.rule_type || 'accuracy';
-                
-                return {
-                    ruleId,
-                    avg,
-                    ruleType
-                };
-            }).sort((a, b) => a.avg - b.avg); // Sort by average score
-            
-            // Update chart
-            ruleBreakdownChart.data.labels = ruleAverages.map(item => item.ruleId);
-            ruleBreakdownChart.data.datasets[0].data = ruleAverages.map(item => item.avg);
-            ruleBreakdownChart.data.datasets[0].backgroundColor = ruleAverages.map(item => colors[item.ruleType]);
-            
-            ruleBreakdownChart.update();
-        }
-
-        // Update connection comparison chart
-        function updateConnectionComparisonChart(data) {
-            // Get unique connection types
-            const connectionTypes = [...new Set(data.map(item => item.type))];
-            
-            // Calculate average for each connection type and rule type
-            const connectionAverages = {};
-            
-            connectionTypes.forEach(connType => {
-                connectionAverages[connType] = {};
-                
-                ruleTypes.forEach(ruleType => {
-                    const filtered = data.filter(item => 
-                        item.type === connType && item.rule_type === ruleType
-                    );
-                    
-                    if (filtered.length > 0) {
-                        const sum = filtered.reduce((acc, item) => acc + item.pass_percentage, 0);
-                        connectionAverages[connType][ruleType] = sum / filtered.length;
-                    } else {
-                        connectionAverages[connType][ruleType] = 0;
-                    }
-                });
-            });
-            
-            // Update chart
-            connectionComparisonChart.data.labels = connectionTypes;
-            
-            ruleTypes.forEach((type, index) => {
-                connectionComparisonChart.data.datasets[index].data = 
-                    connectionTypes.map(connType => connectionAverages[connType][type]);
-            });
-            
-            connectionComparisonChart.update();
-        }
-
-        // Update detailed table
-        function updateDetailedTable(data) {
-            const tableBody = document.getElementById('detailed-scores-body');
-            tableBody.innerHTML = '';
-            
-            // Sort by pass percentage (lowest first)
-            const sortedData = [...data].sort((a, b) => a.pass_percentage - b.pass_percentage);
-            
-            sortedData.forEach(item => {
-                const row = document.createElement('tr');
-                
-                // Add pass percentage class for styling
-                if (item.pass_percentage < 50) {
-                    row.classList.add('fail');
-                } else if (item.pass_percentage < 80) {
-                    row.classList.add('warning');
-                } else {
-                    row.classList.add('pass');
-                }
-                
-                // Format date
-                const testDate = new Date(item.test_time);
-                const formattedDate = testDate.toLocaleString();
-                
-                row.innerHTML = `
-                    <td>${item.rule_id}</td>
-                    <td>${item.rule_type}</td>
-                    <td>${item.type}</td>
-                    <td>${item.db}</td>
-                    <td>${item.total_rows}</td>
-                    <td>${item.total_rows_pass}</td>
-                    <td>${item.pass_percentage.toFixed(2)}%</td>
-                    <td>${formattedDate}</td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Generate sample data if API fails (for development)
-        function generateSampleData() {
-            const sampleData = [
-                {
-                    id: 1,
-                    test_time: "Sun, 20 Apr 2025 06:59:29 GMT",
-                    type: "postgres",
-                    db: "test",
-                    rule_type: "accuracy",
-                    rule_id: "timestamp_validity",
-                    total_rows: 130,
-                    total_rows_pass: 130,
-                    pass_percentage: 100.0
-                },
-                {
-                    id: 2,
-                    test_time: "Sun, 20 Apr 2025 06:59:29 GMT",
-                    type: "postgres",
-                    db: "test",
-                    rule_type: "accuracy",
-                    rule_id: "age_validity",
-                    total_rows: 130,
-                    total_rows_pass: 123,
-                    pass_percentage: 94.62
-                },
-                {
-                    id: 14,
-                    test_time: "Sun, 20 Apr 2025 06:59:29 GMT",
-                    type: "postgres",
-                    db: "test",
-                    rule_type: "validity",
-                    rule_id: "employee_age_validity",
-                    total_rows: 130,
-                    total_rows_pass: 6,
-                    pass_percentage: 4.62
-                }
-            ];
-            
-            // Add more sample data for other rule types and dates
-            const dates = [
-                "Sun, 19 Apr 2025 06:59:29 GMT",
-                "Sun, 18 Apr 2025 06:59:29 GMT",
-                "Sun, 17 Apr 2025 06:59:29 GMT",
-                "Sun, 16 Apr 2025 06:59:29 GMT",
-                "Sun, 15 Apr 2025 06:59:29 GMT",
-            ];
-            
-            const connectionTypes = ["postgres", "mysql", "mongo"];
-            let idCounter = 15;
-            
-            // Generate sample data for all rule types and dates
-            dates.forEach(date => {
-                ruleTypes.forEach(ruleType => {
-                    connectionTypes.forEach(connType => {
-                        // Skip some combinations to make data more realistic
-                        if (Math.random() > 0.7) return;
-                        
-                        const randomPercentage = Math.floor(Math.random() * 40) + 60; // Between 60-100
-                        sampleData.push({
-                            id: idCounter++,
-                            test_time: date,
-                            type: connType,
-                            db: "test",
-                            rule_type: ruleType,
-                            rule_id: `${ruleType}_check_${Math.floor(Math.random() * 3) + 1}`,
-                            total_rows: 100,
-                            total_rows_pass: randomPercentage,
-                            pass_percentage: randomPercentage
-                        });
-                    });
-                });
-            });
-            
-            return sampleData;
-        }
-    </script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

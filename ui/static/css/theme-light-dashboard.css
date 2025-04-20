@@ -1,0 +1,85 @@
+/* Light Theme */
+body.light-theme {
+    background-color: #f0f5fa;
+    color: #2c3e50;
+}
+
+.light-theme .dashboard {
+    background-color: #f0f5fa;
+}
+
+.light-theme header {
+    border-bottom-color: #cbd5e1;
+}
+
+.light-theme section {
+    background-color: #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.light-theme select, 
+.light-theme button {
+    background-color: #fff;
+    border-color: #cbd5e1;
+    color: #2c3e50;
+}
+
+.light-theme button {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.light-theme button:hover {
+    background-color: #2563eb;
+}
+
+.light-theme .toggle-switch {
+    background-color: #d1d5db;
+}
+
+.light-theme .toggle-slider:before {
+    background-color: white;
+}
+
+.light-theme input:checked + .toggle-slider {
+    background-color: #3b82f6;
+}
+
+.light-theme table th, 
+.light-theme table td {
+    border-bottom-color: #e2e8f0;
+}
+
+.light-theme table th {
+    background-color: #e9eef7;
+}
+
+.light-theme .summary-card {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+/* Status colors - Light Theme */
+.light-theme tr.pass {
+    background-color: rgba(52, 211, 153, 0.1);
+}
+
+.light-theme tr.warning {
+    background-color: rgba(251, 191, 36, 0.1);
+}
+
+.light-theme tr.fail {
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.light-theme tr.pass td {
+    color: #065f46;
+}
+
+.light-theme tr.warning td {
+    color: #92400e;
+}
+
+.light-theme tr.fail td {
+    color: #991b1b;
+}
