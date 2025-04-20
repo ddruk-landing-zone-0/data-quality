@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from schemas import SCHEMAS
-from utils.sample_generator import generate_samples
+from utils.sample_generator import generate_samples_for_all_tables
 from utils.connector_client import connect_to_db, insert_to_db, create_table_if_not_exists
 
 
@@ -26,14 +26,19 @@ def ingest():
     
     try:
         # Connect
+        print(f"[1] Connecting to {db_type} with database: {database}")
         connect_response = connect_to_db(db_type,database)
 
         # Create schema/table if not exists
+        print(f"[2] Creating schema/table if not exists for {db_type} with database: {database}")
         schema_response = create_table_if_not_exists(db_type,database)
 
         # Generate & insert data
+        print(f"[3] Generating and inserting data for {db_type} with database: {database}")
         schema = SCHEMAS[db_type][database]
-        samples = generate_samples(schema.get("fields", list(schema.get("columns",{}).keys())), n=10)
+        samples = generate_samples_for_all_tables(schema)
+            
+        print(f"[4] Inserting data into {db_type} with database: {database}")
         insert_response = insert_to_db(db_type, database, samples)
 
         return jsonify({

@@ -37,58 +37,72 @@ def connect_to_db(db_type,database):
 def create_table_if_not_exists(db_type, database):
     schema = SCHEMAS[db_type][database]
 
-    if db_type in ["postgres", "mysql"]:
-        columns_def = ", ".join([f"{col} {dtype}" for col, dtype in schema["columns"].items()])
-        query = f"CREATE TABLE IF NOT EXISTS {schema['table']} ({columns_def});"
-        payload = {
-            "type": db_type,
-            "database": database,
-            "query": query
-        }
-
-    elif db_type == "mongo":
-        # MongoDB creates collection on insert, but we can ensure index/collection creation
-        payload = {
-            "type": db_type,
-            "database": database,
-            "query": {
-                "operation": "insert",
-                "collection": schema["collection"],
-                "documents": []  # No-op insert to trigger collection creation
+    results = {}
+    for table, columns in schema.items():
+        if db_type in ["postgres", "mysql"]:
+            columns_def = ", ".join([f"{col} {dtype}" for col, dtype in columns.items()])
+            query = f"CREATE TABLE IF NOT EXISTS {table} ({columns_def});"
+            payload = {
+                "type": db_type,
+                "database": database,
+                "query": query
             }
-        }
 
-    else:
-        raise ValueError(f"Unsupported DB type: {db_type}")
+        elif db_type == "mongo":
+            # MongoDB creates collection on insert, but we can ensure index/collection creation
+            payload = {
+                "type": db_type,
+                "database": database,
+                "query": {
+                    "operation": "insert",
+                    "collection": table,
+                    "documents": []  # No-op insert to trigger collection creation
+                }
+            }
 
-    print(f"Ensuring schema for {db_type} with: {payload}")
-    return requests.post(f"{GENERIC_CONNECTOR_URL}/execute", json=payload).json()
+        else:
+            raise ValueError(f"Unsupported DB type: {db_type}")
 
-def insert_to_db(db_type, database, samples):
+        print(f"Ensuring schema for {db_type} with: {payload} in table: {table} @ {database}")
+        result = requests.post(f"{GENERIC_CONNECTOR_URL}/execute", json=payload).json()
+        results[table] = result
+    return results
+
+def insert_to_db(db_type, database, all_table_samples):
     schema = SCHEMAS[db_type][database]
-    table = schema.get("table", "users")
-
-    if db_type in ["postgres", "mysql"]:
-        values = ", ".join(
-            f"('{s['id']}', '{s['name']}', '{s['email']}', {s['age']})" for s in samples
-        )
-        query = f"INSERT INTO {table} (id, name, email, age) VALUES {values};"
-        payload = {"type": db_type, "database": database,"query": query}
-
-    elif db_type == "mongo":
-        payload = {
-            "type": db_type,
-            "database": database,
-            "query": {
-                "operation": "insert",
-                "collection": schema["collection"],
-                "documents": samples
-            }
-        }
-
-    else:
-        raise ValueError("Unsupported DB type")
+    results = {}
     
+    for table, samples in all_table_samples.items():
+        if db_type in ["postgres", "mysql"]:
 
-    print(f"Inserting data into {db_type} with: {payload}")
-    return requests.post(f"{GENERIC_CONNECTOR_URL}/execute", json=payload).json()
+            values = ", ".join(
+                "(" + ", ".join(
+                    f"'{s[col]}'" if isinstance(s[col], str) else str(s[col])
+                    for col in schema[table].keys()
+                ) + ")"
+                for s in samples
+            )
+
+            query = f"INSERT INTO {table} ({', '.join(schema[table].keys())}) VALUES {values};"
+
+            payload = {"type": db_type, "database": database,"query": query}
+
+        elif db_type == "mongo":
+            payload = {
+                "type": db_type,
+                "database": database,
+                "query": {
+                    "operation": "insert",
+                    "collection": table,
+                    "documents": samples
+                }
+            }
+
+        else:
+            raise ValueError("Unsupported DB type")
+        
+
+        print(f"Inserting data into {db_type} with: {payload} in table: {table} @ {database}")
+        result = requests.post(f"{GENERIC_CONNECTOR_URL}/execute", json=payload).json()
+        results[table] = result
+    return results

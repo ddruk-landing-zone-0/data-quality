@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+
 from utils.psql_connector import PostgresConnector
 from utils.mysql_connector import MySQLConnector
 from utils.mongo_connector import MongoConnector
 
 app = Flask(__name__)
+CORS(app)
 
 connectors = {}
 

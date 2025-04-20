@@ -6,6 +6,7 @@ QA_SCHEMA = {
             "test_time": "TIMESTAMP",
             "type": "TEXT",
             "db": "TEXT",
+            "rule_type": "TEXT",
             "rule_id": "TEXT",
             "total_rows": "INT",
             "total_rows_pass": "INT",

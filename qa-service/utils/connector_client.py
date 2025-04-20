@@ -64,40 +64,41 @@ def perform_checks(db_type, database):
         raise ValueError(f"Failed to execute count rule: {e}")
     
 
-    for rule_id,constraint in constraints.items():
-        if rule_id == "count_rule":
+    for rule_type,rules in constraints.items():
+        if rule_type == "count_rule":
             continue
-        
-        query = constraint
-        payload = {
-            "type": db_type,
-            "database": database,
-            "query": query
-        }
+        for rule_id, constraint in rules.items():
+            query = constraint
+            payload = {
+                "type": db_type,
+                "database": database,
+                "query": query
+            }
 
-        print(f"Running query: {query}. URL: {GENERIC_CONNECTOR_URL}/execute")
+            print(f"Running query: {query}. URL: {GENERIC_CONNECTOR_URL}/execute")
 
-        response = requests.post(f"{GENERIC_CONNECTOR_URL}/execute", json=payload)
+            response = requests.post(f"{GENERIC_CONNECTOR_URL}/execute", json=payload)
 
-        if response.status_code != 200:
-            raise ValueError(f"Query execution failed: {response.text}")
-        
-        result = response.json()
+            if response.status_code != 200:
+                raise ValueError(f"Query execution failed: {response.text}")
+            
+            result = response.json()
 
-        if "error" in result:
-            print(f"Error in query result: {result['error']}")
-            continue
-        try:
-            result = result["result"][0][0] if db_type in ["postgres", "mysql"] else result["result"]["count"]
-            results.append({
-                "rule_id": rule_id,
-                "total_rows": total_rows,
-                "total_rows_pass": result,
-                "pass_percentage": (result / total_rows) * 100 if total_rows > 0 else 0,
-            })
-        except (KeyError, IndexError):
-            # Handle unexpected result format
-            print(f"Unexpected result format: {result}")
+            if "error" in result:
+                print(f"Error in query result: {result['error']}")
+                continue
+            try:
+                result = result["result"][0][0] if db_type in ["postgres", "mysql"] else result["result"]["count"]
+                results.append({
+                    "rule_type": rule_type,
+                    "rule_id": rule_id,
+                    "total_rows": total_rows,
+                    "total_rows_pass": result,
+                    "pass_percentage": (result / total_rows) * 100 if total_rows > 0 else 0,
+                })
+            except (KeyError, IndexError):
+                # Handle unexpected result format
+                print(f"Unexpected result format: {result}")
 
     return results
 

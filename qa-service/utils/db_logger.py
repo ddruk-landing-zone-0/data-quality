@@ -40,15 +40,16 @@ def store_log_check_result(target_db_type, target_database, db_type,database,tab
             "test_time": datetime.now().isoformat(),
             "type": target_db_type,
             "db": target_database,
+            "rule_type": result["rule_type"],
             "rule_id": result["rule_id"],
             "total_rows": result["total_rows"],
             "total_rows_pass": result["total_rows_pass"],
             "pass_percentage": result["pass_percentage"]
         }
         entries.append(entry)
-    
-    values = ", ".join([f"('{entry['test_time']}', '{entry['type']}', '{entry['db']}', '{entry['rule_id']}', {entry['total_rows']}, {entry['total_rows_pass']}, {entry['pass_percentage']})" for entry in entries])
-    query = f"INSERT INTO {table} (test_time, type, db, rule_id, total_rows, total_rows_pass, pass_percentage) VALUES {values};"
+
+    values = ", ".join([f"('{entry['test_time']}', '{entry['type']}', '{entry['db']}', '{entry['rule_type']}', '{entry['rule_id']}', {entry['total_rows']}, {entry['total_rows_pass']}, {entry['pass_percentage']})" for entry in entries])
+    query = f"INSERT INTO {table} (test_time, type, db, rule_type, rule_id, total_rows, total_rows_pass, pass_percentage) VALUES {values};"
 
     payload = {
         "type": db_type,

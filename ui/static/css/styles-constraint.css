@@ -72,3 +72,105 @@ textarea {
     margin: 10px 0;
     border-radius: 5px;
 }
+
+.category {
+    border-left: 3px solid #28a745;
+    margin: 10px 0;
+    padding-left: 10px;
+}
+
+.category-title {
+    background-color: #e2f0e7;
+    padding: 8px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.rule-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.rule-id {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    margin-right: 5px;
+    font-weight: bold;
+    flex-grow: 1;
+}
+
+.rule-id-input {
+    width: 100%;
+    padding: 4px;
+    border: 1px solid #adb5bd;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.rule-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.dialog {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 500px;
+    max-width: 90%;
+}
+
+.dialog-header {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.dialog-form-group {
+    margin-bottom: 15px;
+}
+
+.dialog-form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.dialog-form-group input, 
+.dialog-form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

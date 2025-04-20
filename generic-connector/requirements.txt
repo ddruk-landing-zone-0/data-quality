@@ -1,4 +1,5 @@
 flask
+flask-cors
 pymongo
 psycopg2-binary
 mysql-connector-python
