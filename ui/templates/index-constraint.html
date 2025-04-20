@@ -2,573 +2,352 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QA Dashboard</title>
-    <link rel="stylesheet" href="styles-dashboard.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <title>Constraint Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles-constraint.css') }}">
 </head>
 <body>
-    <div class="dashboard">
-        <header>
-            <div class="logo">
-                <h1>QA Dashboard</h1>
-                <p class="last-update" id="last-update-time">Last updated: --</p>
-            </div>
-            <div class="filters">
-                <div class="filter-group">
-                    <label for="type-filter">Connection Type:</label>
-                    <select id="type-filter" onchange="filterData()">
-                        <option value="all">All</option>
-                        <option value="postgres">Postgres</option>
-                        <option value="mysql">MySQL</option>
-                        <option value="mongo">MongoDB</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="db-filter">Database:</label>
-                    <select id="db-filter" onchange="filterData()">
-                        <option value="all">All</option>
-                        <option value="test">test</option>
-                        <option value="qa_db">qa_db</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="date-range">Date Range:</label>
-                    <select id="date-range" onchange="filterData()">
-                        <option value="day">Last Day</option>
-                        <option value="week">Last Week</option>
-                        <option value="month" selected>Last Month</option>
-                    </select>
-                </div>
-                <button id="refresh-btn" onclick="fetchData()">Refresh Data</button>
-            </div>
-        </header>
+    <div class="container">
+        <h2>Constraint Management</h2>
+        <div id="constraint-tree"></div>
+        <button onclick="submitConstraints()">Save Changes</button>
+    </div>
 
-        <section class="summary-section">
-            <h2>Summary Scores</h2>
-            <div class="summary-cards">
-                <div class="summary-card accuracy">
-                    <h3>Accuracy</h3>
-                    <div class="gauge-container">
-                        <canvas id="gauge-accuracy"></canvas>
-                        <div class="gauge-value" id="accuracy-value">-</div>
-                    </div>
-                </div>
-                <div class="summary-card completeness">
-                    <h3>Completeness</h3>
-                    <div class="gauge-container">
-                        <canvas id="gauge-completeness"></canvas>
-                        <div class="gauge-value" id="completeness-value">-</div>
-                    </div>
-                </div>
-                <div class="summary-card consistency">
-                    <h3>Consistency</h3>
-                    <div class="gauge-container">
-                        <canvas id="gauge-consistency"></canvas>
-                        <div class="gauge-value" id="consistency-value">-</div>
-                    </div>
-                </div>
-                <div class="summary-card validity">
-                    <h3>Validity</h3>
-                    <div class="gauge-container">
-                        <canvas id="gauge-validity"></canvas>
-                        <div class="gauge-value" id="validity-value">-</div>
-                    </div>
-                </div>
-                <div class="summary-card timeliness">
-                    <h3>Timeliness</h3>
-                    <div class="gauge-container">
-                        <canvas id="gauge-timeliness"></canvas>
-                        <div class="gauge-value" id="timeliness-value">-</div>
-                    </div>
-                </div>
+    <div id="new-rule-dialog" style="display: none;" class="dialog-overlay">
+        <div class="dialog">
+            <div class="dialog-header">Add New Rule</div>
+            <div class="dialog-form-group">
+                <label for="new-rule-id">Rule ID:</label>
+                <input type="text" id="new-rule-id" placeholder="e.g., email_validity">
             </div>
-        </section>
-
-        <section class="time-series-section">
-            <h2>Quality Metrics Over Time</h2>
-            <div class="chart-container">
-                <canvas id="time-series-chart"></canvas>
+            <div class="dialog-form-group">
+                <label for="new-rule-value">Rule Value:</label>
+                <textarea id="new-rule-value" rows="6"></textarea>
             </div>
-        </section>
-
-        <div class="grid-layout">
-            <section class="rule-breakdown-section">
-                <h2>Rule Breakdown</h2>
-                <div class="chart-container">
-                    <canvas id="rule-breakdown-chart"></canvas>
-                </div>
-            </section>
-
-            <section class="connection-comparison-section">
-                <h2>Connection Comparison</h2>
-                <div class="chart-container">
-                    <canvas id="connection-comparison-chart"></canvas>
-                </div>
-            </section>
+            <div class="dialog-buttons">
+                <button onclick="hideNewRuleDialog()">Cancel</button>
+                <button id="new-rule-save" onclick="saveNewRule()">Save</button>
+            </div>
         </div>
-
-        <section class="detailed-scores-section">
-            <h2>Detailed Rule Scores</h2>
-            <div class="table-container">
-                <table id="detailed-scores">
-                    <thead>
-                        <tr>
-                            <th>Rule ID</th>
-                            <th>Type</th>
-                            <th>Connection</th>
-                            <th>Database</th>
-                            <th>Total Rows</th>
-                            <th>Passed</th>
-                            <th>Pass %</th>
-                            <th>Last Test</th>
-                        </tr>
-                    </thead>
-                    <tbody id="detailed-scores-body">
-                        <!-- Dynamic content will be added here -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
     </div>
 
     <script>
-        // Global variables
-        let qaData = [];
-        let timeSeriesChart, ruleBreakdownChart, connectionComparisonChart;
-        let gaugeCharts = {};
-        const ruleTypes = ["accuracy", "completeness", "consistency", "validity", "timeliness"];
-        const colors = {
-            accuracy: 'rgba(66, 133, 244, 1)',
-            completeness: 'rgba(52, 168, 83, 1)',
-            consistency: 'rgba(251, 188, 5, 1)',
-            validity: 'rgba(234, 67, 53, 1)',
-            timeliness: 'rgba(138, 78, 159, 1)'
-        };
+        let constraintData = {};
+        let currentDialogContext = null;
 
-        // Initialize the dashboard
-        document.addEventListener('DOMContentLoaded', function() {
-            initCharts();
-            fetchData();
+        document.addEventListener("DOMContentLoaded", () => {
+            fetch('http://127.0.0.1:9090/constraints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ operation: 'view' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                constraintData = data;
+                renderConstraints(data);
+            });
         });
 
-        // Fetch data from API endpoint
-        async function fetchData() {
-            try {
-                const response = await fetch('http://127.0.0.1:5001/execute', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        "type": "postgres",
-                        "database": "qa_db",
-                        "query": "SELECT * FROM qa_logs;"
-                    })
-                });
+        function renderConstraints(data) {
+            const container = document.getElementById('constraint-tree');
+            container.innerHTML = '';
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+            for (let db in data) {
+                const dbBtn = createCollapsible(db);
+                const dbContent = document.createElement('div');
+                dbContent.className = 'content';
+
+                for (let setName in data[db]) {
+                    const setBtn = createCollapsible(setName);
+                    const setContent = document.createElement('div');
+                    setContent.className = 'content';
+
+                    const setData = data[db][setName];
+                    
+                    // Handle count_rule separately as it's not inside a category
+                    if ('count_rule' in setData) {
+                        const countRuleBlock = createRuleBlock(db, setName, null, 'count_rule', setData['count_rule']);
+                        setContent.appendChild(countRuleBlock);
+                    }
+                    
+                    // Process each category (accuracy, completeness, etc.)
+                    for (let category in setData) {
+                        if (category === 'count_rule') continue; // Skip count_rule as we handled it separately
+                        
+                        const categoryDiv = document.createElement('div');
+                        categoryDiv.className = 'category';
+                        
+                        const categoryTitle = document.createElement('div');
+                        categoryTitle.className = 'category-title';
+                        categoryTitle.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+                        categoryDiv.appendChild(categoryTitle);
+                        
+                        const categoryContent = document.createElement('div');
+                        categoryContent.className = 'category-content';
+                        
+                        const rules = setData[category];
+                        
+                        for (let ruleName in rules) {
+                            const ruleBlock = createRuleBlock(db, setName, category, ruleName, rules[ruleName]);
+                            categoryContent.appendChild(ruleBlock);
+                        }
+                        
+                        // Add rule button for this category
+                        const addRuleBtn = document.createElement('button');
+                        addRuleBtn.innerText = `Add Rule to ${category}`;
+                        addRuleBtn.onclick = () => {
+                            showNewRuleDialog(db, setName, category);
+                        };
+                        
+                        categoryContent.appendChild(addRuleBtn);
+                        categoryDiv.appendChild(categoryContent);
+                        setContent.appendChild(categoryDiv);
+                    }
+                    
+                    // Add new category button
+                    const addCategoryBtn = document.createElement('button');
+                    addCategoryBtn.innerText = 'Add Category';
+                    addCategoryBtn.onclick = () => {
+                        const categoryName = prompt("Enter category name:");
+                        if (categoryName && categoryName.trim() !== '') {
+                            const cleanName = categoryName.trim().toLowerCase();
+                            
+                            if (!constraintData[db][setName][cleanName]) {
+                                constraintData[db][setName][cleanName] = {};
+                                
+                                // Refresh the rendering
+                                renderConstraints(constraintData);
+                            } else {
+                                alert("Category already exists!");
+                            }
+                        }
+                    };
+                    
+                    setContent.appendChild(addCategoryBtn);
+                    dbContent.appendChild(setBtn);
+                    dbContent.appendChild(setContent);
                 }
 
-                const data = await response.json();
-                
-                // Transform the data from array of arrays to array of objects
-                qaData = data.result.map(row => ({
-                    id: row[0],
-                    test_time: row[1],
-                    type: row[2],
-                    db: row[3],
-                    rule_type: row[4],
-                    rule_id: row[5],
-                    total_rows: row[6],
-                    total_rows_pass: row[7],
-                    pass_percentage: row[8]
-                }));
+                container.appendChild(dbBtn);
+                container.appendChild(dbContent);
+            }
 
-                // Update last refresh time
-                document.getElementById('last-update-time').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+            makeCollapsible();
+        }
+
+        function createCollapsible(label) {
+            const btn = document.createElement('button');
+            btn.className = 'collapsible';
+            btn.textContent = label;
+            return btn;
+        }
+
+        function createRuleBlock(db, set, category, ruleName, ruleValue) {
+            const div = document.createElement('div');
+            div.className = 'rule-block';
+            
+            // Create rule header with editable ID
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'rule-header';
+            
+            if (ruleName === 'count_rule') {
+                // For count_rule, just show non-editable label
+                const label = document.createElement('strong');
+                label.innerText = ruleName;
+                headerDiv.appendChild(label);
+            } else {
+                // For other rules, create editable rule ID
+                const ruleIdSpan = document.createElement('span');
+                ruleIdSpan.className = 'rule-id';
+                ruleIdSpan.textContent = ruleName;
+                ruleIdSpan.setAttribute('data-original-id', ruleName);
+                ruleIdSpan.onclick = function() {
+                    const currentId = this.textContent;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = currentId;
+                    input.className = 'rule-id-input';
+                    
+                    input.onblur = function() {
+                        const newId = this.value.trim();
+                        const originalId = ruleIdSpan.getAttribute('data-original-id');
+                        
+                        if (newId && newId !== originalId) {
+                            // Update the constraint data
+                            if (category) {
+                                constraintData[db][set][category][newId] = constraintData[db][set][category][originalId];
+                                delete constraintData[db][set][category][originalId];
+                            } else {
+                                constraintData[db][set][newId] = constraintData[db][set][originalId];
+                                delete constraintData[db][set][originalId];
+                            }
+                            
+                            // Update the UI
+                            ruleIdSpan.textContent = newId;
+                            ruleIdSpan.setAttribute('data-original-id', newId);
+                        } else {
+                            ruleIdSpan.textContent = originalId;
+                        }
+                        
+                        ruleIdSpan.style.display = '';
+                    };
+                    
+                    input.onkeydown = function(e) {
+                        if (e.key === 'Enter') {
+                            this.blur();
+                        }
+                    };
+                    
+                    ruleIdSpan.style.display = 'none';
+                    ruleIdSpan.parentNode.insertBefore(input, ruleIdSpan);
+                    input.focus();
+                };
                 
-                // Process and display the data
-                filterData();
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                alert('Failed to fetch data from the endpoint. Please check if the server is running at http://127.0.0.1:5001.');
-                document.getElementById('last-update-time').textContent = 'Last update failed';
+                headerDiv.appendChild(ruleIdSpan);
+            }
+            
+            div.appendChild(headerDiv);
+
+            const textarea = document.createElement('textarea');
+            textarea.rows = 4;
+            textarea.value = typeof ruleValue === "string" ? ruleValue : JSON.stringify(ruleValue, null, 2);
+
+            // Disable editing if it's count_rule
+            if (ruleName === 'count_rule') {
+                textarea.disabled = true;
+                textarea.style.backgroundColor = '#e9ecef';
+            } else {
+                textarea.onchange = () => {
+                    try {
+                        const newValue = db === 'mongo' ? JSON.parse(textarea.value) : textarea.value;
+                        const currentId = headerDiv.querySelector('.rule-id')?.getAttribute('data-original-id') || ruleName;
+                        
+                        if (category) {
+                            constraintData[db][set][category][currentId] = newValue;
+                        } else {
+                            constraintData[db][set][currentId] = newValue;
+                        }
+                    } catch (e) {
+                        alert("Invalid JSON format");
+                    }
+                };
+            }
+
+            div.appendChild(textarea);
+
+            // Rule actions
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'rule-actions';
+
+            // Only show delete button if it's not count_rule
+            if (ruleName !== 'count_rule') {
+                const delBtn = document.createElement('button');
+                delBtn.innerText = 'Delete';
+                delBtn.onclick = () => {
+                    const currentId = headerDiv.querySelector('.rule-id')?.getAttribute('data-original-id') || ruleName;
+                    
+                    if (category) {
+                        delete constraintData[db][set][category][currentId];
+                    } else {
+                        delete constraintData[db][set][currentId];
+                    }
+                    div.remove();
+                };
+                actionsDiv.appendChild(delBtn);
+            }
+
+            div.appendChild(actionsDiv);
+            return div;
+        }
+
+        function makeCollapsible() {
+            const collapsibles = document.getElementsByClassName("collapsible");
+            for (let i = 0; i < collapsibles.length; i++) {
+                collapsibles[i].onclick = function () {
+                    this.classList.toggle("active");
+                    const content = this.nextElementSibling;
+                    content.style.display = content.style.display === "block" ? "none" : "block";
+                };
             }
         }
 
-        // Filter data based on user selections
-        function filterData() {
-            const typeFilter = document.getElementById('type-filter').value;
-            const dbFilter = document.getElementById('db-filter').value;
-            const dateRange = document.getElementById('date-range').value;
+        function showNewRuleDialog(db, set, category) {
+            const dialog = document.getElementById('new-rule-dialog');
+            const idInput = document.getElementById('new-rule-id');
+            const valueInput = document.getElementById('new-rule-value');
             
-            // Apply filters
-            let filteredData = qaData.filter(item => {
-                // Type filter
-                if (typeFilter !== 'all' && item.type !== typeFilter) return false;
-                
-                // Database filter
-                if (dbFilter !== 'all' && item.db !== dbFilter) return false;
-                
-                // Date filter
-                const itemDate = new Date(item.test_time);
-                const now = new Date();
-                
-                if (dateRange === 'day') {
-                    return itemDate >= new Date(now.setDate(now.getDate() - 1));
-                } else if (dateRange === 'week') {
-                    return itemDate >= new Date(now.setDate(now.getDate() - 7));
-                } else if (dateRange === 'month') {
-                    return itemDate >= new Date(now.setMonth(now.getMonth() - 1));
-                }
-                
-                return true;
-            });
+            // Set default value based on database type
+            valueInput.value = db === 'mongo' 
+                ? JSON.stringify({
+                    operation: "count",
+                    collection: "",
+                    filter: {}
+                }, null, 2)
+                : "SELECT COUNT(*) FROM <table> WHERE <condition>;";
             
-            // Update all visualizations
-            updateSummaryCards(filteredData);
-            updateTimeSeriesChart(filteredData);
-            updateRuleBreakdownChart(filteredData);
-            updateConnectionComparisonChart(filteredData);
-            updateDetailedTable(filteredData);
+            // Clear previous rule ID
+            idInput.value = '';
+            
+            // Store context for saving
+            currentDialogContext = { db, set, category };
+            
+            // Show the dialog
+            dialog.style.display = 'flex';
+            
+            // Focus on rule ID input
+            setTimeout(() => idInput.focus(), 100);
         }
 
-        // Initialize charts
-        function initCharts() {
-            // Initialize gauge charts
-            ruleTypes.forEach(type => {
-                const ctx = document.getElementById(`gauge-${type}`).getContext('2d');
-                gaugeCharts[type] = new Chart(ctx, createGaugeConfig(0, colors[type]));
-            });
+        function hideNewRuleDialog() {
+            document.getElementById('new-rule-dialog').style.display = 'none';
+            currentDialogContext = null;
+        }
+
+        function saveNewRule() {
+            if (!currentDialogContext) return;
             
-            // Initialize time series chart
-            const timeSeriesCtx = document.getElementById('time-series-chart').getContext('2d');
-            timeSeriesChart = new Chart(timeSeriesCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: ruleTypes.map((type, index) => ({
-                        label: type.charAt(0).toUpperCase() + type.slice(1),
-                        data: [],
-                        borderColor: colors[type],
-                        backgroundColor: colors[type].replace('1)', '0.1)'),
-                        tension: 0.4,
-                        pointRadius: 3
-                    }))
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Date'
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            title: {
-                                display: true,
-                                text: 'Pass Percentage (%)'
-                            }
-                        }
+            const { db, set, category } = currentDialogContext;
+            const ruleId = document.getElementById('new-rule-id').value.trim();
+            const ruleValue = document.getElementById('new-rule-value').value;
+            
+            if (!ruleId) {
+                alert("Please provide a Rule ID");
+                return;
+            }
+            
+            try {
+                const parsedValue = db === 'mongo' ? JSON.parse(ruleValue) : ruleValue;
+                
+                // Add new rule to data structure
+                if (!constraintData[db][set][category]) {
+                    constraintData[db][set][category] = {};
+                }
+                
+                // Check if rule ID already exists
+                if (constraintData[db][set][category][ruleId]) {
+                    if (!confirm(`Rule '${ruleId}' already exists. Overwrite?`)) {
+                        return;
                     }
                 }
-            });
-            
-            // Initialize rule breakdown chart
-            const ruleBreakdownCtx = document.getElementById('rule-breakdown-chart').getContext('2d');
-            ruleBreakdownChart = new Chart(ruleBreakdownCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Pass Percentage',
-                        data: [],
-                        backgroundColor: Object.values(colors),
-                        borderColor: Object.values(colors),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            max: 100
-                        }
-                    }
-                }
-            });
-            
-            // Initialize connection comparison chart
-            const connectionComparisonCtx = document.getElementById('connection-comparison-chart').getContext('2d');
-            connectionComparisonChart = new Chart(connectionComparisonCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: ruleTypes.map((type, index) => ({
-                        label: type.charAt(0).toUpperCase() + type.slice(1),
-                        data: [],
-                        backgroundColor: colors[type],
-                        borderColor: colors[type],
-                        borderWidth: 1
-                    }))
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            title: {
-                                display: true,
-                                text: 'Pass Percentage (%)'
-                            }
-                        }
-                    }
-                }
-            });
+                
+                constraintData[db][set][category][ruleId] = parsedValue;
+                
+                // Close dialog and refresh UI
+                hideNewRuleDialog();
+                renderConstraints(constraintData);
+            } catch (e) {
+                alert("Invalid value format" + (db === 'mongo' ? " (expected valid JSON)" : ""));
+            }
         }
 
-        // Create gauge chart configuration
-        function createGaugeConfig(value, color) {
-            return {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [value, 100 - value],
-                        backgroundColor: [
-                            color,
-                            'rgba(200, 200, 200, 0.2)'
-                        ],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    circumference: 180,
-                    rotation: -90,
-                    cutout: '75%',
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            enabled: false
-                        }
-                    },
-                    maintainAspectRatio: false,
-                    responsive: true
-                }
-            };
-        }
-
-        // Update summary cards with gauge charts
-        function updateSummaryCards(data) {
-            // Calculate average score by rule type
-            const averages = {};
-            
-            ruleTypes.forEach(type => {
-                const rules = data.filter(item => item.rule_type === type);
-                if (rules.length > 0) {
-                    const sum = rules.reduce((acc, item) => acc + item.pass_percentage, 0);
-                    averages[type] = sum / rules.length;
-                } else {
-                    averages[type] = 0;
-                }
-            });
-            
-            // Update each gauge chart and value
-            ruleTypes.forEach(type => {
-                const value = averages[type] || 0;
-                const formattedValue = value.toFixed(1) + '%';
-                
-                // Update gauge chart
-                gaugeCharts[type].data.datasets[0].data = [value, 100 - value];
-                gaugeCharts[type].update();
-                
-                // Update text value
-                document.getElementById(`${type}-value`).textContent = formattedValue;
-            });
-        }
-
-        // Update time series chart
-        function updateTimeSeriesChart(data) {
-            // Get unique dates from data
-            const dates = [...new Set(data.map(item => {
-                const date = new Date(item.test_time);
-                return date.toLocaleDateString();
-            }))].sort((a, b) => new Date(a) - new Date(b));
-            
-            // Prepare datasets for each rule type
-            const datasets = {};
-            ruleTypes.forEach(type => {
-                datasets[type] = {};
-                dates.forEach(date => {
-                    datasets[type][date] = [];
-                });
-            });
-            
-            // Group data by date and rule type
-            data.forEach(item => {
-                const date = new Date(item.test_time).toLocaleDateString();
-                if (dates.includes(date) && ruleTypes.includes(item.rule_type)) {
-                    datasets[item.rule_type][date].push(item.pass_percentage);
-                }
-            });
-            
-            // Calculate average for each date and rule type
-            const averages = {};
-            ruleTypes.forEach(type => {
-                averages[type] = [];
-                dates.forEach(date => {
-                    const values = datasets[type][date];
-                    if (values.length > 0) {
-                        const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
-                        averages[type].push(avg);
-                    } else {
-                        averages[type].push(null); // No data for this date/type
-                    }
-                });
-            });
-            
-            // Update chart
-            timeSeriesChart.data.labels = dates;
-            ruleTypes.forEach((type, index) => {
-                timeSeriesChart.data.datasets[index].data = averages[type];
-            });
-            
-            timeSeriesChart.update();
-        }
-
-        // Update rule breakdown chart
-        function updateRuleBreakdownChart(data) {
-            // Get unique rule IDs
-            const ruleIds = [...new Set(data.map(item => item.rule_id))];
-            
-            // Calculate average for each rule ID
-            const ruleAverages = ruleIds.map(ruleId => {
-                const ruleData = data.filter(item => item.rule_id === ruleId);
-                const sum = ruleData.reduce((acc, item) => acc + item.pass_percentage, 0);
-                const avg = sum / ruleData.length;
-                
-                // Get the rule type for color coding
-                const ruleType = ruleData[0]?.rule_type || 'accuracy';
-                
-                return {
-                    ruleId,
-                    avg,
-                    ruleType
-                };
-            }).sort((a, b) => a.avg - b.avg); // Sort by average score
-            
-            // Update chart
-            ruleBreakdownChart.data.labels = ruleAverages.map(item => item.ruleId);
-            ruleBreakdownChart.data.datasets[0].data = ruleAverages.map(item => item.avg);
-            ruleBreakdownChart.data.datasets[0].backgroundColor = ruleAverages.map(item => colors[item.ruleType]);
-            
-            ruleBreakdownChart.update();
-        }
-
-        // Update connection comparison chart
-        function updateConnectionComparisonChart(data) {
-            // Get unique connection types
-            const connectionTypes = [...new Set(data.map(item => item.type))];
-            
-            // Calculate average for each connection type and rule type
-            const connectionAverages = {};
-            
-            connectionTypes.forEach(connType => {
-                connectionAverages[connType] = {};
-                
-                ruleTypes.forEach(ruleType => {
-                    const filtered = data.filter(item => 
-                        item.type === connType && item.rule_type === ruleType
-                    );
-                    
-                    if (filtered.length > 0) {
-                        const sum = filtered.reduce((acc, item) => acc + item.pass_percentage, 0);
-                        connectionAverages[connType][ruleType] = sum / filtered.length;
-                    } else {
-                        connectionAverages[connType][ruleType] = 0;
-                    }
-                });
-            });
-            
-            // Update chart
-            connectionComparisonChart.data.labels = connectionTypes;
-            
-            ruleTypes.forEach((type, index) => {
-                connectionComparisonChart.data.datasets[index].data = 
-                    connectionTypes.map(connType => connectionAverages[connType][type]);
-            });
-            
-            connectionComparisonChart.update();
-        }
-
-        // Update detailed table
-        function updateDetailedTable(data) {
-            const tableBody = document.getElementById('detailed-scores-body');
-            tableBody.innerHTML = '';
-            
-            // Sort by pass percentage (lowest first)
-            const sortedData = [...data].sort((a, b) => a.pass_percentage - b.pass_percentage);
-            
-            sortedData.forEach(item => {
-                const row = document.createElement('tr');
-                
-                // Add pass percentage class for styling
-                if (item.pass_percentage < 50) {
-                    row.classList.add('fail');
-                } else if (item.pass_percentage < 80) {
-                    row.classList.add('warning');
-                } else {
-                    row.classList.add('pass');
-                }
-                
-                // Format date
-                const testDate = new Date(item.test_time);
-                const formattedDate = testDate.toLocaleString();
-                
-                row.innerHTML = `
-                    <td>${item.rule_id}</td>
-                    <td>${item.rule_type}</td>
-                    <td>${item.type}</td>
-                    <td>${item.db}</td>
-                    <td>${item.total_rows}</td>
-                    <td>${item.total_rows_pass}</td>
-                    <td>${item.pass_percentage.toFixed(2)}%</td>
-                    <td>${formattedDate}</td>
-                `;
-                
-                tableBody.appendChild(row);
+        function submitConstraints() {
+            fetch('http://127.0.0.1:9090/constraints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ operation: 'update', new_constraints: constraintData })
+            })
+            .then(res => res.json())
+            .then(resp => {
+                alert(resp.message || "Update Successful");
             });
         }
     </script>
