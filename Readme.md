@@ -36,9 +36,11 @@ docker compose up
 ### 2. **Run UI**
 a. Navigate to `[http://127.0.0.1:8000/](http://127.0.0.1:8000/)` to ingest data
 b. Navigate to `[http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard)` to view the dashboard
-
+c. Navigate to `[http://127.0.0.1:8000/constraints](http://127.0.0.1:8000/constraints)` to view the constraints
 ---
-
+## Snapshot of the UI
+![UI Snapshot](./assets/constraint.png)
+![Dashboard Snapshot](./assets/dashboard.png)
 
 ## Available Other Endpoints ( for devs )
 
