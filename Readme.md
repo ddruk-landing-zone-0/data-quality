@@ -28,17 +28,19 @@
 
 ## How To run
 
+### 1. **Start the Servers**
 ```
-docker compose up --build -d
-docker ps
-docker compose logs
-docker compose down
+docker compose up
 ```
+
+### 2. **Run UI**
+a. Navigate to `[http://127.0.0.1:8000/](http://127.0.0.1:8000/)` to ingest data
+b. Navigate to `[http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard)` to view the dashboard
 
 ---
 
 
-## Available Endpoints
+## Available Other Endpoints ( for devs )
 
 ### 1. **Connection Endpoint** `[POST]`
 `http://127.0.0.1:5001/connect`
